@@ -1,0 +1,43 @@
+import express from "express";
+import fetch from "node-fetch";
+
+const app = express();
+app.use(express.json());
+
+const OPENAI_KEY = process.env.OPENAI_KEY;
+
+app.post("/check", async (req, res) => {
+  const text = req.body.text;
+
+  const response = await fetch("https://api.openai.com/v1/moderations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "omni-moderation-latest",
+      input: text
+    })
+  });
+
+  const data = await response.json();
+  const result = data.results[0];
+
+  const score =
+    (result.categories.violence ? 3 : 0) +
+    (result.categories.sexual ? 3 : 0) +
+    (result.categories.harassment ? 2 : 0);
+
+  res.json({
+    flagged: result.flagged,
+    score: score
+  });
+});
+
+-- ▼ここ重要
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
+});
